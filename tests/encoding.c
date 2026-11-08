@@ -20,8 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "config.h"
+#include "compat.h"
 #include "encoding.h"
-#include "test.h"
+#include "test_main.h"
 
 #define TUPLES 4
 
@@ -46,7 +48,7 @@ START_TEST(test_inline_dotify)
 	char *b;
 
 	memset(temp, 0, sizeof(temp));
-	strcpy(temp, dottests[_i].a);
+	strlcpy(temp, dottests[_i].a, sizeof(temp));
 	b = temp;
 	inline_dotify(b, sizeof(temp));
 
@@ -60,7 +62,7 @@ START_TEST(test_inline_undotify)
 	char *b;
 
 	memset(temp, 0, sizeof(temp));
-	strcpy(temp, dottests[_i].b);
+	strlcpy(temp, dottests[_i].b, sizeof(temp));
 	b = temp;
 	inline_undotify(b, sizeof(temp));
 
@@ -73,8 +75,8 @@ START_TEST(test_build_hostname)
 	char data[256];
 	char buf[1024];
 	char *topdomain = "a.c";
-	int buflen;
-	int i;
+	unsigned int buflen;
+	unsigned int i;
 
 	for (i = 0; i < sizeof(data); i++) {
 		data[i] = i & 0xFF;
@@ -85,15 +87,28 @@ START_TEST(test_build_hostname)
 	for (i = 1; i < sizeof(data); i++) {
 		int len = build_hostname(buf, buflen, data, i, topdomain, &base32_ops, sizeof(buf));
 
-		ck_assert(len <= i);
+		ck_assert_int_le(len, i);
 		ck_assert_msg(strstr(buf, "..") == NULL,
 			"Found double dots when encoding data len %d! buf: %s", i, buf);
 	}
 }
 END_TEST
 
+START_TEST(test_unpack_data_bounds)
+{
+	char data[] = "nfxwi0lomv0gk21unfxgo3dfon0gs1th";
+	char buf[8];
+	int len;
+
+	len = unpack_data(buf, sizeof(buf), data, strlen(data), &base32_ops);
+	ck_assert_int_eq(len, sizeof(buf) - 1);
+	ck_assert_int_eq(buf[sizeof(buf) - 1], '\0');
+	ck_assert_int_eq(unpack_data(buf, 0, data, strlen(data), &base32_ops), 0);
+}
+END_TEST
+
 TCase *
-test_encoding_create_tests()
+test_create(void)
 {
 	TCase *tc;
 
@@ -101,6 +116,7 @@ test_encoding_create_tests()
 	tcase_add_loop_test(tc, test_inline_dotify, 0, TUPLES);
 	tcase_add_loop_test(tc, test_inline_undotify, 0, TUPLES);
 	tcase_add_test(tc, test_build_hostname);
+	tcase_add_test(tc, test_unpack_data_bounds);
 
 	return tc;
 }

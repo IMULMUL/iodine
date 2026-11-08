@@ -29,10 +29,40 @@
 
 
 #define QMEMPING_LEN 30
-/* Max advisable: 64k/2 = 32000. Total mem usage: QMEMPING_LEN * USERS * 6 bytes */
+/* Max advisable: 64k/2 = 32000. Total mem usage: QMEMPING_LEN * USERS * 8 bytes */
 
 #define QMEMDATA_LEN 15
-/* Max advisable: 36/2 = 18. Total mem usage: QMEMDATA_LEN * USERS * 6 bytes */
+/* Max advisable: 36/2 = 18. Total mem usage: QMEMDATA_LEN * USERS * 8 bytes */
+
+#define QMEM_CMCLEN  4
+/* For matching a query already responded to. */
+struct qmem_entry {
+	unsigned char cmc[QMEM_CMCLEN];
+	uint16_t type;
+};
+
+struct qmem_cache {
+	uint16_t lastfilled;
+	uint16_t capacity;
+	struct qmem_entry entries[];
+};
+
+struct qmem_ping_cache {
+	uint16_t lastfilled;
+	uint16_t capacity;
+	struct qmem_entry entries[QMEMPING_LEN];
+};
+
+struct qmem_data_cache {
+	uint16_t lastfilled;
+	uint16_t capacity;
+	struct qmem_entry entries[QMEMDATA_LEN];
+};
+
+enum qmem_id {
+	QMEM_PING = 1,
+	QMEM_DATA,
+};
 
 struct tun_user {
 	char id;
@@ -56,15 +86,11 @@ struct tun_user {
 	char downenc;
 	int out_acked_seqno;
 	int out_acked_fragment;
-	int fragsize;
+	unsigned int fragsize;
 	enum connection conn;
 	int lazy;
-	unsigned char qmemping_cmc[QMEMPING_LEN * 4];
-	unsigned short qmemping_type[QMEMPING_LEN];
-	int qmemping_lastfilled;
-	unsigned char qmemdata_cmc[QMEMDATA_LEN * 4];
-	unsigned short qmemdata_type[QMEMDATA_LEN];
-	int qmemdata_lastfilled;
+	struct qmem_ping_cache qmem_ping;
+	struct qmem_data_cache qmem_data;
 #ifdef OUTPACKETQ_LEN
 	struct packet outpacketq[OUTPACKETQ_LEN];
 	int outpacketq_nexttouse;
@@ -81,11 +107,14 @@ struct tun_user {
 extern struct tun_user *users;
 
 int init_users(in_addr_t, int);
-const char* users_get_first_ip(void);
+const in_addr_t* users_get_first_ip(void);
 int find_user_by_ip(uint32_t);
 int all_users_waiting_to_send(void);
-int find_available_user(void);
-void user_switch_codec(int userid, const struct encoder *enc);
-void user_set_conn_type(int userid, enum connection c);
+int find_available_user(unsigned int*);
+void user_switch_codec(unsigned int userid, const struct encoder *enc);
+void user_set_conn_type(unsigned int userid, enum connection c);
+
+void user_qmem_write(int userid, enum qmem_id qmid, struct qmem_entry *entry);
+int user_qmem_matching(int userid, enum qmem_id qmid, struct qmem_entry *entry);
 
 #endif

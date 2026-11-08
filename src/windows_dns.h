@@ -18,7 +18,7 @@
 #ifndef __FIX_WINDOWS_H__
 #define __FIX_WINDOWS_H__
 
-typedef unsigned int in_addr_t;
+typedef unsigned long in_addr_t;
 
 #include <winsock2.h>
 #include <windows.h>
@@ -35,22 +35,23 @@ typedef unsigned int in_addr_t;
 #endif
 
 #define T_A DNS_TYPE_A
+#define T_AAAA DNS_TYPE_AAAA
 #define T_NS DNS_TYPE_NS
 #define T_NULL DNS_TYPE_NULL
 #define T_CNAME DNS_TYPE_CNAME
 #define T_MX DNS_TYPE_MX
 #define T_TXT DNS_TYPE_TXT
+#define T_SOA DNS_TYPE_SOA
 #define T_SRV DNS_TYPE_SRV
 
 #define C_IN 1
 
+#define NOERROR 0
 #define FORMERR 1
 #define SERVFAIL 2
 #define NXDOMAIN 3
 #define NOTIMP 4
 #define REFUSED 5
-
-#define sleep(seconds) Sleep((seconds)*1000)
 
 typedef struct {
 	unsigned id :16;	/* query identification number */
@@ -89,16 +90,5 @@ struct ip {
 	u_short ip_sum;		/* checksum */
 	struct in_addr ip_src, ip_dst; /* source and dest address */
 };
-
-DWORD WINAPI tun_reader(LPVOID arg);
-struct tun_data {
-	HANDLE tun;
-	int sock;
-	struct sockaddr_storage addr;
-	int addrlen;
-};
-
-/* No-op for now. */
-#define syslog(...)
 
 #endif

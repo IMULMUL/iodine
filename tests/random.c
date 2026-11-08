@@ -15,25 +15,43 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __TEST_H__
-#define __TEST_H__
+#include "config.h"
+#include "common.h"
+#include "random.h"
+#include "test_main.h"
 
-TCase *test_base32_create_tests();
-TCase *test_base64_create_tests();
-TCase *test_common_create_tests();
-TCase *test_dns_create_tests();
-TCase *test_encoding_create_tests();
-TCase *test_read_create_tests();
-TCase *test_login_create_tests();
-TCase *test_user_create_tests();
-TCase *test_fw_query_create_tests();
+#include <check.h>
+#include <stdio.h>
 
-char *va_str(const char *, ...);
+START_TEST(test_secure_random)
+{
+	unsigned char a[64], b[64];
+	int i, nonzero;
 
-#if (CHECK_MAJOR_VERSION == 0 && \
-	((CHECK_MINOR_VERSION == 9 && CHECK_MICRO_VERSION < 2) || \
-	 (CHECK_MINOR_VERSION < 9)))
-#define tcase_set_timeout(...)
-#endif
+	/* A zero-initialized buffer must come back non-zero from the
+	   CSPRNG. */
+	memset(a, 0, sizeof(a));
+	secure_random(a, sizeof(a));
+	nonzero = 0;
+	for (i = 0; i < (int)sizeof(a); i++)
+		nonzero += (a[i] != 0);
+	ck_assert_int_gt(nonzero, 0);
 
-#endif
+	/* Two independent draws of 64 random bytes must differ; a
+	   no-op (or all-zero) implementation would make them equal. */
+	memset(b, 0, sizeof(b));
+	secure_random(b, sizeof(b));
+	ck_assert_mem_ne(a, b, sizeof(b));
+}
+END_TEST
+
+TCase *
+test_create(void)
+{
+	TCase *tc;
+	network_init();
+
+	tc = tcase_create("Random");
+	tcase_add_test(tc, test_secure_random);
+	return tc;
+}
